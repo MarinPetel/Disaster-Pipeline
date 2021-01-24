@@ -4,14 +4,36 @@ import numpy as np
 from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
+    '''
+    Load the two csv files containing messages and categories_filepath
+
+    INPUT:
+    messages_filepath-string, the path to the csv file containing messages
+    categories_filepath-string, the path to the csv file containing messages
+    categories
+
+    OUTPUT:
+    df-Dataframe, merged dataframe containing the messages and their categories
+    '''
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
+    #'id' is the common key in both files and has the same name
     df = pd.merge(left=messages,right=categories,on='id')
 
     return df
 
 
 def clean_data(df):
+    '''
+    Returns a cleaned version of the merged Dataframe
+
+    INPUT:
+    df-Dataframe, the merged dataframe
+
+    OUTPUT:
+    df-Dataframe, cleaned dataframe with descriptive column names for categories
+    , binary variables for the categories and non duplicated rows.
+    '''
     # create a dataframe of the 36 individual category columns
     categories = df['categories'].str.split(';',expand=True)
 
@@ -41,11 +63,25 @@ def clean_data(df):
 
 
 def save_data(df, database_filename):
+    '''
+    Saves a dataframe as a sql database
+
+    INPUT:
+    df-Dataframe, the dataframe to be saved
+    database_filename-string, the name to give to the saved sql database
+
+    OUTPUT:
+    database_filename,sql database
+    '''
     engine = create_engine('sqlite:///' + database_filename + '.db')
     df.to_sql(database_filename, engine, index=False)
 
 
 def main():
+    '''
+    Runs all the above functions after having taken the files paths and name for
+    the new sql database
+    '''
     if len(sys.argv) == 4:
 
         messages_filepath, categories_filepath, database_filepath = sys.argv[1:]
