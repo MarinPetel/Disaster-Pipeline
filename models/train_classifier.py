@@ -32,7 +32,35 @@ def load_data(database_filepath):
     return X,Y
 
 def tokenize(text):
-    pass
+    '''Process the text data in a message: normalization, tokenization
+    and lemmatization
+
+    INPUT:
+    text-string, a message contained in the dataframe with features
+
+    OUTPUT:
+    text-list, a list with the normalized and lemmatized token words from the
+    inputted message
+    '''
+    # find url and put a place holder
+    url_regex=r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+    text=re.sub(url_regex,'urlplaceholder',text)
+
+    # normalize:lowercase, remove punctuation
+    text = text.lower().strip()
+    text = re.sub(r'^a-zA-Z0-9',' ',text)
+
+    # split into token words
+    text = word_tokenize(text)
+
+    # remove stop words
+    text = [word for word in text if word not in stopwords.words('english')]
+
+    # lemmatize
+    lemmatizer = WordNetLemmatizer()
+    text = [lemmatizer.lemmatize(word) for word in text]
+
+    return text
 
 
 def build_model():
