@@ -1,6 +1,9 @@
 import sys
 import pandas as pd
 from sqlalchemy import create_engine
+import os
+import pickle
+import matplotlib.pyplot as plt
 
 # import nlp tools
 import re
@@ -12,8 +15,17 @@ nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('wordnet')
 
+# imports from sklearn
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import CountVectorizer,TfidfTransformer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.metrics import classification_report,accuracy_score,f1_score
+
 def load_data(database_filepath):
-    '''Load the databse and return the features and targets as dataframes
+    '''Load the databse and return the features, targets as dataframes and the
+    target names
 
     INPUT:
     database_filepath-string, the path of the database to load_data
@@ -21,15 +33,25 @@ def load_data(database_filepath):
     OUTPUT:
     X-Dataframe, the dataframe with the original features
     Y-Dataframe, the dataframe with the targets
+    category_names-array, the names of the targets
     '''
+    # Read the SQL database
     engine = create_engine('sqlite:///' + database_filepath)
-    df = pd.read_sql(sql='SELECT * FROM Disaster',con=engine)
+    print(database_filepath)
+    db_name = os.path.basename(database_filepath).replace('.db','')
+    df = pd.read_sql_table(db_name,con=engine)
+
     # need to filter out some messages which have value of 2 for the categorie
     # 'related'
     df = df[df['related']!=2]
+
+    # Select the translated message as the original feature
     X = df['message']
+
+    # Only keeps the binary variables with categories as the targets
     Y = df.drop(columns=['id','message','original','genre'],axis=1)
-    return X,Y
+    category_names = Y.columns
+    return X,Y,category_names
 
 def tokenize(text):
     '''Process the text data in a message: normalization, tokenization
@@ -64,15 +86,55 @@ def tokenize(text):
 
 
 def build_model():
-    pass
+    '''Builds a pipeline to process the data with a final estimator and combines
+    it with a grid search
+
+    OUTPUT:
+    GridSearchCV- a GridSearchCV object to a pipeline
+    '''
+    pipeline = Pipeline([
+    ('bag_of_words',CountVectorizer(tokenizer=tokenize)),
+    ('tdif',TfidfTransformer()),
+    ('Multioutput',MultiOutputClassifier(RandomForestClassifier()))
+    ])
+
+    parameters={} # To be completed with the grid search
+
+    return pipeline
+
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    pass
+    '''Evaluate the pipeline'''
+
+    # Perform predictions
+    predictions = model.predict(X_test)
+
+    # Construct a dictionnary with accuracy and f1 scores for each categories
+    d={}
+    for category in category_names:
+        d[category]={'accuracy':accuracy_score(Y_test[category],predictions[:,Y_test.columns.get_loc(category)]),
+        'f1':f1_score(Y_test[category],predictions[:,Y_test.columns.get_loc(category)])}
+    # Convert it in a dataframe and plot it
+    pd.DataFrame(d).plot(kind='bar')
+    plt.title('Accuracy and F1 Scores for each categories')
+    plt.legend(loc=(-0.7,-0.7),ncol=8)
+    plt.savefig('Accuracy and F1 Scores for each categories',dpi=600,bbox_inches='tight')
+    
+
+    # Print classification report for each categories
+    for category in category_names:
+        print(f'Category {category}')
+        print(classification_report(Y_test[category],
+        predictions[:,Y_test.columns.get_loc(category)]))
+
+
 
 
 def save_model(model, model_filepath):
-    pass
+    # Save the model as a pickle file
+    pickle.dump(model, open(model_filepath, 'wb'))
+
 
 
 def main():
