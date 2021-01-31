@@ -125,7 +125,7 @@ def evaluate_model(model, X_test, Y_test, category_names):
     pd.DataFrame(d).plot(kind='bar')
     plt.title('Accuracy and F1 Scores for each categories')
     plt.legend(loc=(-0.7,-0.7),ncol=8)
-    plt.savefig('Accuracy and F1 Scores for each categories',dpi=600,bbox_inches='tight')
+    plt.savefig('results',dpi=600,bbox_inches='tight')
 
 
     # Print classification report for each categories

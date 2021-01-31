@@ -47,7 +47,7 @@ The model is then deployed on a web app in which users can input a message which
     - 1 python script-train_classifier.py. Runs the ML pipeline and saves the model as a pickle file. Also output a png image showing the performance of the classifier on the test dataset for each category (accuracy and f1 scores)
     - 1 png image. As described above
 
-![](models/Accuracy and F1 Scores for each categories.png)
+![](models/results.png)
 
 
 3. In the folder app:
@@ -60,3 +60,9 @@ The model is then deployed on a web app in which users can input a message which
 Must give credit to Udacity and their partner Figure Eight for this very interesting Project
 
 ## Screenshots<a name="screenshots"></a>
+
+Overview of the dataset
+
+![](screenshots/Overview_dataset1.png)
+
+![](screenshots/Overview_dataset2.png)
