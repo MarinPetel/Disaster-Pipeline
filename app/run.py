@@ -1,13 +1,14 @@
 import json
 import plotly
 import pandas as pd
+import os
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
 from flask import Flask
 from flask import render_template, request, jsonify
-from plotly.graph_objs import Bar
+from plotly.graph_objs import Bar, Heatmap
 from sklearn.externals import joblib
 from sqlalchemy import create_engine
 
@@ -26,25 +27,37 @@ def tokenize(text):
     return clean_tokens
 
 # load data
-engine = create_engine('sqlite:///../data/YourDatabaseName.db')
-df = pd.read_sql_table('YourTableName', engine)
+# Find list of files in the data folder
+data_files = os.listdir('../data')
+# Find the .db file
+db_name = [x for x in data_files if x.endswith('.db')][0]
+engine = create_engine('sqlite:///../data/' + db_name)
+df = pd.read_sql_table(db_name.replace('.db',''), engine)
 
 # load model
-model = joblib.load("../models/your_model_name.pkl")
+# Find list of files in the data folder
+data_files = os.listdir('../models')
+# Find the .pkl file
+model_name = [x for x in data_files if x.endswith('.pkl')][0]
+model = joblib.load("../models/" + model_name)
 
 
 # index webpage displays cool visuals and receives user input text for model
 @app.route('/')
 @app.route('/index')
 def index():
-    
-    # extract data needed for visuals
-    # TODO: Below is an example - modify to extract data for your own visuals
+
+    # extract data needed for  first visual
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
-    
+
+    # extract data needed for second visual
+    genre_cat=df.groupby(by='genre')[df.columns[4:]].sum().T
+    genre_cat['direct']=(genre_cat['direct']/genre_counts['direct'])*100
+    genre_cat['social']=(genre_cat['social']/genre_counts['social'])*100
+    genre_cat['news']=(genre_cat['news']/genre_counts['news'])*100
+
     # create visuals
-    # TODO: Below is an example - modify to create your own visuals
     graphs = [
         {
             'data': [
@@ -63,13 +76,34 @@ def index():
                     'title': "Genre"
                 }
             }
+        },
+        {
+            'data': [
+                Heatmap(
+                    x=genre_names,
+                    y=df.columns[4:],
+                    z=genre_cat,
+                    type='heatmap',
+                    colorscale= 'ylgnbu'
+                )
+            ],
+
+            'layout': {
+                'title': 'Message Genres and Categories %',
+                'yaxis': {
+                    'title': "Categories"
+                },
+                'xaxis': {
+                    'title': "Genre"
+                }
+            }
         }
     ]
-    
+
     # encode plotly graphs in JSON
     ids = ["graph-{}".format(i) for i, _ in enumerate(graphs)]
     graphJSON = json.dumps(graphs, cls=plotly.utils.PlotlyJSONEncoder)
-    
+
     # render web page with plotly graphs
     return render_template('master.html', ids=ids, graphJSON=graphJSON)
 
@@ -78,13 +112,13 @@ def index():
 @app.route('/go')
 def go():
     # save user input in query
-    query = request.args.get('query', '') 
+    query = request.args.get('query', '')
 
     # use model to predict classification for query
     classification_labels = model.predict([query])[0]
     classification_results = dict(zip(df.columns[4:], classification_labels))
 
-    # This will render the go.html Please see that file. 
+    # This will render the go.html Please see that file.
     return render_template(
         'go.html',
         query=query,

@@ -19,8 +19,8 @@ nltk.download('wordnet')
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer,TfidfTransformer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.multioutput import MultiOutputClassifier
+from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier
+from sklearn.multioutput import MultiOutputClassifier,ClassifierChain
 from sklearn.metrics import classification_report,accuracy_score,f1_score
 
 def load_data(database_filepath):
@@ -87,7 +87,12 @@ def tokenize(text):
 
 def build_model():
     '''Builds a pipeline to process the data with a final estimator and combines
-    it with a grid search
+    it with a grid search. The accuracy will be maximized taking into account for
+    one sample all the labels to be predicted. This is a tough metric as to be
+    considered accurate a prediction for one message needs to be correct for all
+    categories. When testing various models, the use of chainclassifier provided
+    better results that MultiOutputClassifier which fits classifier for each category
+    independantly of each other.
 
     OUTPUT:
     GridSearchCV- a GridSearchCV object to a pipeline
@@ -95,12 +100,13 @@ def build_model():
     pipeline = Pipeline([
     ('bag_of_words',CountVectorizer(tokenizer=tokenize)),
     ('tdif',TfidfTransformer()),
-    ('Multioutput',MultiOutputClassifier(RandomForestClassifier()))
+    ('ClassifierChain',ClassifierChain(AdaBoostClassifier()))
     ])
 
-    parameters={} # To be completed with the grid search
+    parameters={'ClassifierChain__base_estimator__n_estimators':[100,150,200],
+    'ClassifierChain__base_estimator__learning_rate':[1,0.8,0.5]}
 
-    return pipeline
+    return GridSearchCV(pipeline,parameters,verbose=3)
 
 
 
@@ -115,12 +121,12 @@ def evaluate_model(model, X_test, Y_test, category_names):
     for category in category_names:
         d[category]={'accuracy':accuracy_score(Y_test[category],predictions[:,Y_test.columns.get_loc(category)]),
         'f1':f1_score(Y_test[category],predictions[:,Y_test.columns.get_loc(category)])}
-    # Convert it in a dataframe and plot it
+    # Convert it in a dataframe, plot it and save as a png file
     pd.DataFrame(d).plot(kind='bar')
     plt.title('Accuracy and F1 Scores for each categories')
     plt.legend(loc=(-0.7,-0.7),ncol=8)
     plt.savefig('Accuracy and F1 Scores for each categories',dpi=600,bbox_inches='tight')
-    
+
 
     # Print classification report for each categories
     for category in category_names:
@@ -133,7 +139,7 @@ def evaluate_model(model, X_test, Y_test, category_names):
 
 def save_model(model, model_filepath):
     # Save the model as a pickle file
-    pickle.dump(model, open(model_filepath, 'wb'))
+    pickle.dump(model, open(model_filepath, 'wb',-1))
 
 
 
@@ -149,6 +155,8 @@ def main():
 
         print('Training model...')
         model.fit(X_train, Y_train)
+        print('The best model has the following parameters:')
+        print(model.best_params_)
 
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)
