@@ -41,10 +41,6 @@ def load_data(database_filepath):
     db_name = os.path.basename(database_filepath).replace('.db','')
     df = pd.read_sql_table(db_name,con=engine)
 
-    # need to filter out some messages which have value of 2 for the categorie
-    # 'related'
-    df = df[df['related']!=2]
-
     # Select the translated message as the original feature
     X = df['message']
 
